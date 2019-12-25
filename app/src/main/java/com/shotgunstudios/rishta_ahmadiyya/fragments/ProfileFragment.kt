@@ -1,13 +1,17 @@
 package com.shotgunstudios.rishta_ahmadiyya.fragments
 
 
+import android.content.ContentValues.TAG
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.get
 import com.bumptech.glide.Glide
 
 import com.shotgunstudios.rishta_ahmadiyya.R
@@ -18,18 +22,24 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.android.synthetic.main.fragment_profile.*
+import kotlinx.android.synthetic.main.fragment_profile.view.*
+import java.util.*
 
 
 class ProfileFragment : Fragment() {
     private lateinit var userId: String
     private lateinit var userDatabase: DatabaseReference
+    val db = FirebaseFirestore.getInstance()
     private var callback: RishtaCallback? = null
 
     fun setCallback(callback: RishtaCallback) {
         this.callback = callback
         userId = callback.onGetUserId()
-        userDatabase = callback.getUserDatabase().child(userId)
+        //userDatabase = callback.getUserDatabase().child(userId)
+
     }
 
     override fun onCreateView(
@@ -52,9 +62,85 @@ class ProfileFragment : Fragment() {
 
     }
 
+    fun getIndex(spinner : Spinner, value : String): Int{
+        for(i in 1 until spinner.count){
+            if(spinner.getItemAtPosition(i)==value){
+                return i
+            }
+        }
+        return 0
+    }
 
     fun populateInfo() {
         progressLayout.visibility = View.VISIBLE
+        val docRef = db.collection("users").document(userId)
+        docRef.get()
+            .addOnSuccessListener { document ->
+                if (document != null) {
+                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                    nameET.setText(document.getString(DATA_NAME))
+                    countrySP.setSelection(
+                        getIndex(
+                            countrySP,
+                            document.getString(DATA_COUNTRY).toString()
+                        )
+                    )
+                    preferredCountrySP.setSelection(
+                        getIndex(
+                            preferredCountrySP, document.getString(
+                                DATA_COUNTRY_PREFERENCE
+                            ).toString()
+                        )
+                    )
+                    ageET.setText(document.getString(DATA_AGE))
+                    if (document.getString(DATA_GENDER) == GENDER_MALE) {
+                        radioMan1.isChecked = true
+                    } else {
+                        radioWoman1.isChecked = true
+                    }
+                    if(document.getString(DATA_IMAGE_URL)!="") {
+                        populateImage(document.getString(DATA_IMAGE_URL!!).toString())
+                    }
+
+                    progressLayout.visibility = View.GONE
+
+                } else {
+                    Log.d(TAG, "No such document")
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.d(TAG, "get failed with ", exception)
+            }
+    }
+
+/*
+            override fun onDataChange(p0: DataSnapshot) {
+                if (isAdded) {
+                    val user = p0.getValue(User::class.java)
+                    nameET.setText(user?.name, TextView.BufferType.EDITABLE)
+                    countrySP.setSelection(getIndex(countrySP,user?.country.toString()))
+                    preferredCountrySP.setSelection(getIndex(preferredCountrySP,user?.preferredCountry.toString()))
+                    ageET.setText(user?.age, TextView.BufferType.EDITABLE)
+
+                    if (user?.gender == GENDER_MALE) {
+                        radioMan1.isChecked = true
+                    }
+                    if (user?.gender == GENDER_FEMALE) {
+                        radioWoman1.isChecked = true
+                    }
+                    if(!user?.imageUrl.isNullOrEmpty()) {
+                        populateImage(user?.imageUrl!!)
+                    }
+                    progressLayout.visibility = View.GONE
+                }
+            }
+
+        })
+
+
+
+
+
         userDatabase.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onCancelled(p0: DatabaseError) {
                 progressLayout.visibility = View.GONE
@@ -64,19 +150,15 @@ class ProfileFragment : Fragment() {
                 if (isAdded) {
                     val user = p0.getValue(User::class.java)
                     nameET.setText(user?.name, TextView.BufferType.EDITABLE)
-                    emailET.setText(user?.email, TextView.BufferType.EDITABLE)
+                    countrySP.setSelection(getIndex(countrySP,user?.country.toString()))
+                    preferredCountrySP.setSelection(getIndex(preferredCountrySP,user?.preferredCountry.toString()))
                     ageET.setText(user?.age, TextView.BufferType.EDITABLE)
+
                     if (user?.gender == GENDER_MALE) {
                         radioMan1.isChecked = true
                     }
                     if (user?.gender == GENDER_FEMALE) {
                         radioWoman1.isChecked = true
-                    }
-                    if (user?.preferredGender == GENDER_MALE) {
-                        radioMan2.isChecked = true
-                    }
-                    if (user?.preferredGender == GENDER_FEMALE) {
-                        radioWoman2.isChecked = true
                     }
                     if(!user?.imageUrl.isNullOrEmpty()) {
                         populateImage(user?.imageUrl!!)
@@ -88,35 +170,85 @@ class ProfileFragment : Fragment() {
         })
     }
 
+
+ */
+    fun updateDB(field:String, value:String){
+        db.collection("users").document(userId)
+            .update(field,value)
+            .addOnSuccessListener { Log.d(TAG, "successfully updated!") }
+            .addOnFailureListener { e -> Log.w(TAG, "Error writing document", e) }
+    }
+
+    fun addDB(database:FirebaseFirestore, content:Any){
+        db.collection("users").document(userId)
+            .set(content)
+            .addOnSuccessListener { Log.d(TAG, "DocumentSnapshot successfully written!") }
+            .addOnFailureListener { e -> Log.w(TAG, "Error writing document", e) }
+    }
+
     fun onApply() {
+
         if (nameET.text.toString().isNullOrEmpty() ||
-            emailET.text.toString().isNullOrEmpty() ||
-            radioGroup1.checkedRadioButtonId == -1 ||
-            radioGroup2.checkedRadioButtonId == -1
+            countrySP.selectedItemPosition==0|| preferredCountrySP.selectedItemPosition==0||
+            radioGroup1.checkedRadioButtonId == -1
         ) {
             Toast.makeText(context, getString(R.string.error_profile_incomplete), Toast.LENGTH_SHORT).show()
         } else {
             val name = nameET.text.toString()
             val age = ageET.text.toString()
-            val email = emailET.text.toString()
+            val country = countrySP.selectedItem.toString()
+            val preferredCountry = preferredCountrySP.selectedItem.toString()
             val gender =
                 if (radioMan1.isChecked) GENDER_MALE
                 else GENDER_FEMALE
             val preferredGender =
-                if (radioMan2.isChecked) GENDER_MALE
-                else GENDER_FEMALE
+                if (radioMan1.isChecked) GENDER_FEMALE
+                else GENDER_MALE
 
+/*
+            updateDB(DATA_NAME, name)
+            updateDB(DATA_AGE, age)
+            updateDB(DATA_COUNTRY, country)
+            updateDB(DATA_COUNTRY_PREFERENCE, preferredCountry)
+            updateDB(DATA_GENDER, gender)
+            updateDB(DATA_GENDER_PREFERENCE, preferredGender)
+*/
+            val docData = hashMapOf(
+                DATA_NAME to name,
+                DATA_AGE to age,
+                DATA_COUNTRY to country,
+                DATA_COUNTRY_PREFERENCE to preferredCountry,
+                DATA_GENDER to gender,
+                DATA_GENDER_PREFERENCE to preferredGender
+            )
+
+            db.collection("users").document(userId)
+                .set(docData, SetOptions.merge())
+                .addOnSuccessListener { Log.d(TAG, "DocumentSnapshot successfully written!") }
+                .addOnFailureListener { e -> Log.w(TAG, "Error writing document", e) }
+
+/*
             userDatabase.child(DATA_NAME).setValue(name)
             userDatabase.child(DATA_AGE).setValue(age)
-            userDatabase.child(DATA_EMAIL).setValue(email)
+            userDatabase.child(DATA_COUNTRY).setValue(country)
+            userDatabase.child(DATA_COUNTRY_PREFERENCE).setValue(preferredCountry)
             userDatabase.child(DATA_GENDER).setValue(gender)
             userDatabase.child(DATA_GENDER_PREFERENCE).setValue(preferredGender)
-
+ */
             callback?.profileComplete()
         }
     }
     fun updateImageUri(uri: String) {
-        userDatabase.child(DATA_IMAGE_URL).setValue(uri)
+
+        val docData = hashMapOf(
+            DATA_IMAGE_URL to uri
+        )
+
+        db.collection("users").document(userId)
+            .set(docData, SetOptions.merge())
+            .addOnSuccessListener { Log.d(TAG, "DocumentSnapshot successfully written!") }
+            .addOnFailureListener { e -> Log.w(TAG, "Error writing document", e) }
+        //userDatabase.child(DATA_IMAGE_URL).setValue(uri)
         populateImage(uri)
     }
     fun populateImage(uri: String) {

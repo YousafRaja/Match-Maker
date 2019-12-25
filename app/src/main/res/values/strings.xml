@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TinderClone</string>
+    <string name="app_name">Rishta Ahmadiyya</string>
     <string name="startup_button_login">Log in</string>
     <string name="startup_button_signup">Sign up</string>
     <string name="hint_email">Email</string>
@@ -18,4 +18,19 @@
     <string name="no_available_users">No available users</string>
     <string name="send_button_text">Send</string>
     <string name="hint_message">Message</string>
+
+    <string name="country_prompt">Choose a country</string>
+    <string name="country_hint">Country</string>
+    <string-array name="country_arrays">
+        <item>Select Country</item>
+        <item>Canada</item>
+        <item>Malaysia</item>
+        <item>United States</item>
+        <item>Indonesia</item>
+        <item>France</item>
+        <item>Italy</item>
+        <item>Singapore</item>
+        <item>New Zealand</item>
+        <item>India</item>
+    </string-array>
 </resources>

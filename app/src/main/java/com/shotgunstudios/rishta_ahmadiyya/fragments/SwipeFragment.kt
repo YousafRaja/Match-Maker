@@ -1,7 +1,9 @@
 package com.shotgunstudios.rishta_ahmadiyya.fragments
 
 
+import android.content.ContentValues.TAG
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -18,8 +20,13 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.lorentzos.flingswipe.SwipeFlingAdapterView
+import kotlinx.android.synthetic.main.fragment_profile.*
 import kotlinx.android.synthetic.main.fragment_swipe.*
+import kotlinx.android.synthetic.main.fragment_swipe.progressLayout
 
 class SwipeFragment : Fragment() {
 
@@ -31,9 +38,11 @@ class SwipeFragment : Fragment() {
     private var cardsAdapter: ArrayAdapter<User>? = null
     private var rowItems = ArrayList<User>()
 
+    private var preferredCountry: String? = null
     private var preferredGender: String? = null
     private var userName: String? = null
     private var imageUrl: String? = null
+    val db = FirebaseFirestore.getInstance()
 
     fun setCallback(callback: RishtaCallback) {
         this.callback = callback
@@ -52,6 +61,27 @@ class SwipeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+
+        val docRef = db.collection("users").document(userId)
+        docRef.get()
+            .addOnSuccessListener { document ->
+                if (document != null) {
+                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                    preferredGender = document.getString(DATA_GENDER_PREFERENCE)
+                    preferredCountry = document.getString(DATA_COUNTRY_PREFERENCE)
+                    userName = document.getString(DATA_NAME)
+                    imageUrl = document.getString(DATA_IMAGE_URL)
+                    populateItems()
+                } else {
+                    Log.d(TAG, "No such document")
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.d(TAG, "get failed with ", exception)
+            }
+
+
+/*
         userDatabase.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onCancelled(p0: DatabaseError) {
             }
@@ -64,7 +94,7 @@ class SwipeFragment : Fragment() {
                 populateItems()
             }
         })
-
+*/
         cardsAdapter = CardsAdapter(context!!, R.layout.item, rowItems)
 
         frame.adapter = cardsAdapter
@@ -76,14 +106,58 @@ class SwipeFragment : Fragment() {
 
             override fun onLeftCardExit(p0: Any?) {
                 var user = p0 as User
-                userDatabase.child(user.uid.toString()).child(DATA_SWIPES_LEFT).child(userId)
-                    .setValue(true)
+                //userDatabase.child(user.uid.toString()).child(DATA_SWIPES_LEFT).child(userId)
+                  //  .setValue(true)
+                db.collection("users").document(user.uid.toString())
+                    .update(DATA_SWIPES_LEFT, FieldValue.arrayUnion(userId))
+
             }
 
             override fun onRightCardExit(p0: Any?) {
                 val selectedUser = p0 as User
                 val selectedUserId = selectedUser.uid
                 if (!selectedUserId.isNullOrEmpty()) {
+                    db.collection("users").document(selectedUserId)
+                        .update(DATA_SWIPES_RIGHT, FieldValue.arrayUnion(userId))
+
+
+                    val docRef = db.collection("users")
+                        .whereEqualTo("uid", userId)
+                        .whereArrayContains(DATA_SWIPES_RIGHT, selectedUserId)
+                    docRef.get()
+                        .addOnSuccessListener { selected ->
+                            Toast.makeText(context, "Match!", Toast.LENGTH_SHORT).show()
+                            val chatKey = chatDatabase.push().key
+                            if (chatKey != null) {
+                                db.collection("users").document(userId)
+                                    .update(DATA_SWIPES_RIGHT, FieldValue.arrayRemove(selectedUserId))
+                                db.collection("users").document(selectedUserId)
+                                    .update(DATA_SWIPES_RIGHT, FieldValue.arrayRemove(userId))
+
+                                db.collection("users").document(userId)
+                                    .update(DATA_MATCHES, FieldValue.arrayUnion(chatKey))
+                                db.collection("users").document(selectedUserId)
+                                    .update(DATA_MATCHES, FieldValue.arrayUnion(chatKey))
+
+                                chatDatabase.child(chatKey).child(userId).child(DATA_NAME)
+                                    .setValue(userName)
+                                chatDatabase.child(chatKey).child(userId)
+                                    .child(DATA_IMAGE_URL)
+                                    .setValue(imageUrl)
+
+                                chatDatabase.child(chatKey).child(selectedUserId)
+                                    .child(DATA_NAME)
+                                    .setValue(selectedUser.name)
+                                chatDatabase.child(chatKey).child(selectedUserId)
+                                    .child(DATA_IMAGE_URL)
+                                    .setValue(selectedUser.imageUrl)
+                            }
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.w(TAG, "Error getting documents: ", exception)
+                        }
+
+/*
                     userDatabase.child(userId).child(DATA_SWIPES_RIGHT)
                         .addListenerForSingleValueEvent(object : ValueEventListener {
                             override fun onCancelled(p0: DatabaseError) {
@@ -129,6 +203,7 @@ class SwipeFragment : Fragment() {
                                 }
                             }
                         })
+                    */
                 }
             }
 
@@ -157,8 +232,38 @@ class SwipeFragment : Fragment() {
     fun populateItems() {
         noUsersLayout.visibility = View.GONE
         progressLayout.visibility = View.VISIBLE
+        val docRef = db.collection("users")
+        .whereEqualTo(DATA_GENDER, preferredGender)
+        //.whereEqualTo(DATA_COUNTRY, DATA_COUNTRY_PREFERENCE)
+        docRef.get()
+            .addOnSuccessListener { filteredUsers ->
+                for (document in filteredUsers) {
+                    var showUser = true
+                    /*
+                    if (document.get(DATA_SWIPES_LEFT).toString().contains(userId)) {
+                        showUser = false
+                    }
+                    */
+                    val user = document.toObject(User::class.java)
+                    if (showUser) {
+                        rowItems.add(user)
+                        cardsAdapter?.notifyDataSetChanged()
+                    }
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.w(TAG, "Error getting documents: ", exception)
+            }
+        progressLayout.visibility = View.GONE
+        if (rowItems.isEmpty()) {
+            noUsersLayout.visibility = View.VISIBLE
+        }
+    }
+/*
         val cardsQuery =
-            userDatabase.orderByChild(DATA_GENDER).equalTo(preferredGender) // Filtering users here
+            userDatabase.orderByChild(DATA_GENDER).equalTo(preferredGender)
+        //val cardsQuery = cardsQuery1.orderByChild(DATA_COUNTRY).equalTo(DATA_COUNTRY_PREFERENCE)// Filtering users here
+
         cardsQuery.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onCancelled(p0: DatabaseError) {
             }
@@ -186,7 +291,9 @@ class SwipeFragment : Fragment() {
                 }
             }
         })
-    }
+    } */
+
+
 
 
 }
