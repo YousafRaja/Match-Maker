@@ -42,13 +42,20 @@ class SwipeFragment : Fragment() {
     private var preferredGender: String? = null
     private var userName: String? = null
     private var imageUrl: String? = null
+    private var started = false
     val db = FirebaseFirestore.getInstance()
 
     fun setCallback(callback: RishtaCallback) {
         this.callback = callback
         userId = callback.onGetUserId()
-        userDatabase = callback.getUserDatabase()
+        //userDatabase = callback.getUserDatabase()
         chatDatabase = callback.getChatDatabase()
+    }
+
+    override fun onPause() {
+        rowItems.clear()
+        cardsAdapter?.notifyDataSetChanged()
+        super.onPause()
     }
 
     override fun onCreateView(
@@ -58,6 +65,10 @@ class SwipeFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_swipe, container, false)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if(started)populateItems()
+    }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -71,7 +82,9 @@ class SwipeFragment : Fragment() {
                     preferredCountry = document.getString(DATA_COUNTRY_PREFERENCE)
                     userName = document.getString(DATA_NAME)
                     imageUrl = document.getString(DATA_IMAGE_URL)
+                    cardsAdapter?.notifyDataSetChanged()
                     populateItems()
+                    started = true
                 } else {
                     Log.d(TAG, "No such document")
                 }
@@ -107,7 +120,7 @@ class SwipeFragment : Fragment() {
             override fun onLeftCardExit(p0: Any?) {
                 var user = p0 as User
                 //userDatabase.child(user.uid.toString()).child(DATA_SWIPES_LEFT).child(userId)
-                  //  .setValue(true)
+                //  .setValue(true)
                 db.collection("users").document(user.uid.toString())
                     .update(DATA_SWIPES_LEFT, FieldValue.arrayUnion(userId))
 
@@ -123,34 +136,50 @@ class SwipeFragment : Fragment() {
 
                     val docRef = db.collection("users")
                         .whereEqualTo("uid", userId)
-                        .whereArrayContains(DATA_SWIPES_RIGHT, selectedUserId)
+
                     docRef.get()
-                        .addOnSuccessListener { selected ->
-                            Toast.makeText(context, "Match!", Toast.LENGTH_SHORT).show()
-                            val chatKey = chatDatabase.push().key
-                            if (chatKey != null) {
-                                db.collection("users").document(userId)
-                                    .update(DATA_SWIPES_RIGHT, FieldValue.arrayRemove(selectedUserId))
-                                db.collection("users").document(selectedUserId)
-                                    .update(DATA_SWIPES_RIGHT, FieldValue.arrayRemove(userId))
+                        .addOnSuccessListener { collection ->
+                            var document = collection.documents[0]
+                            if (document.get(DATA_SWIPES_RIGHT).toString().contains(selectedUserId)) {
+                                Toast.makeText(context, "Match!", Toast.LENGTH_SHORT).show()
+                                callback!!.newMatch()
+                                val chatKey = chatDatabase.push().key
+                                if (chatKey != null) {
+                                    db.collection("users").document(userId)
+                                        .update(
+                                            DATA_SWIPES_RIGHT,
+                                            FieldValue.arrayRemove(selectedUserId)
+                                        )
+                                    db.collection("users").document(selectedUserId)
+                                        .update(DATA_SWIPES_RIGHT, FieldValue.arrayRemove(userId))
 
-                                db.collection("users").document(userId)
-                                    .update(DATA_MATCHES, FieldValue.arrayUnion(chatKey))
-                                db.collection("users").document(selectedUserId)
-                                    .update(DATA_MATCHES, FieldValue.arrayUnion(chatKey))
+                                    // DATA_MATCHES references chat data base, DATA_MATCHES_IDS used as history of previous matches during filtering in swipe fragment
+                                    db.collection("users").document(userId)
+                                        .update(DATA_MATCHES, FieldValue.arrayUnion(chatKey))
+                                    db.collection("users").document(selectedUserId)
+                                        .update(DATA_MATCHES, FieldValue.arrayUnion(chatKey))
+                                    db.collection("users").document(userId)
+                                        .update(
+                                            DATA_MATCH_IDS,
+                                            FieldValue.arrayUnion(selectedUserId)
+                                        )
+                                    db.collection("users").document(selectedUserId)
+                                        .update(DATA_MATCH_IDS, FieldValue.arrayUnion(userId))
+                                    //---
 
-                                chatDatabase.child(chatKey).child(userId).child(DATA_NAME)
-                                    .setValue(userName)
-                                chatDatabase.child(chatKey).child(userId)
-                                    .child(DATA_IMAGE_URL)
-                                    .setValue(imageUrl)
+                                    chatDatabase.child(chatKey).child(userId).child(DATA_NAME)
+                                        .setValue(userName)
+                                    chatDatabase.child(chatKey).child(userId)
+                                        .child(DATA_IMAGE_URL)
+                                        .setValue(imageUrl)
 
-                                chatDatabase.child(chatKey).child(selectedUserId)
-                                    .child(DATA_NAME)
-                                    .setValue(selectedUser.name)
-                                chatDatabase.child(chatKey).child(selectedUserId)
-                                    .child(DATA_IMAGE_URL)
-                                    .setValue(selectedUser.imageUrl)
+                                    chatDatabase.child(chatKey).child(selectedUserId)
+                                        .child(DATA_NAME)
+                                        .setValue(selectedUser.name)
+                                    chatDatabase.child(chatKey).child(selectedUserId)
+                                        .child(DATA_IMAGE_URL)
+                                        .setValue(selectedUser.imageUrl)
+                                }
                             }
                         }
                         .addOnFailureListener { exception ->
@@ -230,20 +259,46 @@ class SwipeFragment : Fragment() {
     }
 
     fun populateItems() {
+
+        /*
+        val docRef2 = db.collection("users").document(userId)
+        docRef2.get()
+            .addOnSuccessListener { document ->
+                if (document != null) {
+                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                    preferredGender = document.getString(DATA_GENDER_PREFERENCE)
+                    preferredCountry = document.getString(DATA_COUNTRY_PREFERENCE)
+                    userName = document.getString(DATA_NAME)
+                    imageUrl = document.getString(DATA_IMAGE_URL)
+                    populateItems()
+                } else {
+                    Log.d(TAG, "No such document")
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.d(TAG, "get failed with ", exception)
+            }
+        */
+
+
         noUsersLayout.visibility = View.GONE
         progressLayout.visibility = View.VISIBLE
         val docRef = db.collection("users")
-        .whereEqualTo(DATA_GENDER, preferredGender)
+            .whereEqualTo(DATA_GENDER, preferredGender)
+
         //.whereEqualTo(DATA_COUNTRY, DATA_COUNTRY_PREFERENCE)
         docRef.get()
             .addOnSuccessListener { filteredUsers ->
                 for (document in filteredUsers) {
                     var showUser = true
-                    /*
-                    if (document.get(DATA_SWIPES_LEFT).toString().contains(userId)) {
+
+                    if (document.get(DATA_SWIPES_LEFT).toString().contains(userId)
+                        || document.get(DATA_SWIPES_RIGHT).toString().contains(userId)
+                        || document.get(DATA_MATCH_IDS).toString().contains(userId)
+                    ) {
                         showUser = false
                     }
-                    */
+
                     val user = document.toObject(User::class.java)
                     if (showUser) {
                         rowItems.add(user)
@@ -292,8 +347,6 @@ class SwipeFragment : Fragment() {
             }
         })
     } */
-
-
 
 
 }

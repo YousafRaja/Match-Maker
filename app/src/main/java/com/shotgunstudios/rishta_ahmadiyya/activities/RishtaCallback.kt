@@ -3,7 +3,7 @@ package com.shotgunstudios.rishta_ahmadiyya.activities
 import com.google.firebase.database.DatabaseReference
 
 interface RishtaCallback{
-
+    fun newMatch()
     fun onSignout()
     fun onGetUserId(): String
     fun getUserDatabase(): DatabaseReference

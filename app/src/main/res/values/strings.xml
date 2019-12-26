@@ -21,6 +21,8 @@
 
     <string name="country_prompt">Choose a country</string>
     <string name="country_hint">Country</string>
+    <string name="hint_noMatch">When other users swipe right on your profile, you can chat with them here. Currently there are no notifications for this so you will have to check back periodically.</string>
+    <string name="bio_hint">Write an introduction for yourself.</string>
     <string-array name="country_arrays">
         <item>Select Country</item>
         <item>Canada</item>

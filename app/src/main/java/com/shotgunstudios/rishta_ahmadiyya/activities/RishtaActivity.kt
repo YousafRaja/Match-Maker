@@ -31,6 +31,7 @@ const val REQUEST_CODE_PHOTO = 1234
 class RishtaActivity : AppCompatActivity(), RishtaCallback {
 
 
+
     private val firebaseAuth = FirebaseAuth.getInstance()
     private val userId = firebaseAuth.currentUser?.uid
 
@@ -40,12 +41,15 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
     private var profileFragment: ProfileFragment? = null
     private var swipeFragment: SwipeFragment? = null
     private var matchesFragment: MatchesFragment? = null
+    private var newMatch = false
 
     private var profileTab: TabLayout.Tab? = null
     private var swipeTab: TabLayout.Tab? = null
     private var matchesTab: TabLayout.Tab? = null
 
     private var resultImageUrl: Uri? = null
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,7 +100,8 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
                         replaceFragment(swipeFragment!!)
                     }
                     matchesTab -> {
-                        if (matchesFragment == null) {
+                        if (matchesFragment == null || newMatch) {
+                            newMatch = false
                             matchesFragment = MatchesFragment()
                             matchesFragment!!.setCallback(this@RishtaActivity)
                         }
@@ -148,6 +153,10 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
 
     override fun profileComplete() {
         swipeTab?.select()
+    }
+
+    override fun newMatch() {
+        newMatch = true
     }
 
 

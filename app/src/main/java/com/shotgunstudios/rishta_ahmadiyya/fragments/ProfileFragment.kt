@@ -196,6 +196,7 @@ class ProfileFragment : Fragment() {
         } else {
             val name = nameET.text.toString()
             val age = ageET.text.toString()
+            val bio = bioET.text.toString()
             val country = countrySP.selectedItem.toString()
             val preferredCountry = preferredCountrySP.selectedItem.toString()
             val gender =
@@ -214,12 +215,14 @@ class ProfileFragment : Fragment() {
             updateDB(DATA_GENDER_PREFERENCE, preferredGender)
 */
             val docData = hashMapOf(
+                DATA_UID to userId,
                 DATA_NAME to name,
                 DATA_AGE to age,
                 DATA_COUNTRY to country,
                 DATA_COUNTRY_PREFERENCE to preferredCountry,
                 DATA_GENDER to gender,
-                DATA_GENDER_PREFERENCE to preferredGender
+                DATA_GENDER_PREFERENCE to preferredGender,
+                DATA_BIO to bio
             )
 
             db.collection("users").document(userId)

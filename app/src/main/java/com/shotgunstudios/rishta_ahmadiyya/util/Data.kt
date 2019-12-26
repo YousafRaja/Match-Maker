@@ -9,7 +9,8 @@ data class User(
     val country: String? = "",
     val preferredCountry: String? = "",
     val preferredGender: String? = "",
-    val imageUrl: String? = ""
+    val imageUrl: String? = "",
+    val bio: String? = ""
 )
 
 data class Chat(
