@@ -8,6 +8,8 @@ import android.view.View
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.android.volley.RequestQueue
+import com.android.volley.toolbox.Volley
 import com.bumptech.glide.Glide
 import com.shotgunstudios.rishta_ahmadiyya.Message
 import com.shotgunstudios.rishta_ahmadiyya.R
@@ -16,11 +18,15 @@ import com.shotgunstudios.rishta_ahmadiyya.adapters.MessagesAdapter
 import com.shotgunstudios.rishta_ahmadiyya.util.DATA_CHATS
 import com.shotgunstudios.rishta_ahmadiyya.util.DATA_MESSAGES
 import com.google.firebase.database.*
+import com.google.firebase.messaging.FirebaseMessaging
+import com.shotgunstudios.rishta_ahmadiyya.util.ConnectivityUtils
 import kotlinx.android.synthetic.main.activity_chat.*
 import java.util.*
 
 class ChatActivity : AppCompatActivity() {
 
+
+    private var myName: String? = null
     private var chatId: String? = null
     private var userId: String? = null
     private var imageUrl: String? = null
@@ -28,6 +34,7 @@ class ChatActivity : AppCompatActivity() {
 
     private lateinit var chatDatabase: DatabaseReference
     private lateinit var messagesAdapter: MessagesAdapter
+
 
     private val chatMessagesListener = object : ChildEventListener {
         override fun onCancelled(p0: DatabaseError) {
@@ -54,12 +61,32 @@ class ChatActivity : AppCompatActivity() {
 
     }
 
+    override fun onPause() {
+        super.onPause()
+        userId = intent.extras!!.getString(PARAM_USER_ID)
+        otherUserId = intent.extras!!.getString(PARAM_OTHER_USER_ID)
+        requestQueue.add(ConnectivityUtils.broadCastMessage(userId.toString(), getString(R.string.CHAT_STATUS), "", this))
+    }
+
+
+    override fun onResume() {
+        super.onResume()
+        userId = intent.extras!!.getString(PARAM_USER_ID)
+        otherUserId = intent.extras!!.getString(PARAM_OTHER_USER_ID)
+        requestQueue.add(ConnectivityUtils.broadCastMessage(userId.toString(), getString(R.string.CHAT_STATUS), otherUserId.toString(), this))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
         chatId = intent.extras!!.getString(PARAM_CHAT_ID)
         userId = intent.extras!!.getString(PARAM_USER_ID)
+
+        val topic = "/topics/"+userId.toString()
+        FirebaseMessaging.getInstance().subscribeToTopic(topic)
+        //requestQueue.add(ConnectivityUtils.broadCastMessage(userId.toString(), "title2", "abcd2", this))
+
         imageUrl = intent.extras!!.getString(PARAM_IMAGE_URL)
         otherUserId = intent.extras!!.getString(PARAM_OTHER_USER_ID)
         if(chatId.isNullOrEmpty() || userId.isNullOrEmpty() || imageUrl.isNullOrEmpty() || otherUserId.isNullOrEmpty()) {
@@ -94,6 +121,8 @@ class ChatActivity : AppCompatActivity() {
                         topPhotoIV.setOnClickListener {
                             startActivity(UserInfoActivity.newIntent(this@ChatActivity, otherUserId))
                         }
+                    } else {
+                        myName = user?.name
                     }
                 }
             }
@@ -107,6 +136,8 @@ class ChatActivity : AppCompatActivity() {
         val key = chatDatabase.child(chatId!!).child(DATA_MESSAGES).push().key
         if(!key.isNullOrEmpty()) {
             chatDatabase.child(chatId!!).child(DATA_MESSAGES).child(key).setValue(message)
+            requestQueue.add(ConnectivityUtils.broadCastMessage(otherUserId.toString(), "New Message:"+userId, myName + ": " +message.message.toString(), this))
+
         }
         messageET.setText("", TextView.BufferType.EDITABLE)
     }
@@ -127,4 +158,13 @@ class ChatActivity : AppCompatActivity() {
             return intent
         }
     }
+
+    private val requestQueue: RequestQueue by lazy {
+        Volley.newRequestQueue(this.applicationContext)
+    }
+
+
+
+
+
 }

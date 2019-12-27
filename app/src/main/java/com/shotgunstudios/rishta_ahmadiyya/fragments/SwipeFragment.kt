@@ -16,15 +16,10 @@ import com.shotgunstudios.rishta_ahmadiyya.User
 import com.shotgunstudios.rishta_ahmadiyya.activities.RishtaCallback
 import com.shotgunstudios.rishta_ahmadiyya.adapters.CardsAdapter
 import com.shotgunstudios.rishta_ahmadiyya.util.*
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import com.lorentzos.flingswipe.SwipeFlingAdapterView
-import kotlinx.android.synthetic.main.fragment_profile.*
 import kotlinx.android.synthetic.main.fragment_swipe.*
 import kotlinx.android.synthetic.main.fragment_swipe.progressLayout
 
@@ -42,7 +37,7 @@ class SwipeFragment : Fragment() {
     private var preferredGender: String? = null
     private var userName: String? = null
     private var imageUrl: String? = null
-    private var started = false
+    private var populationExists = false
     val db = FirebaseFirestore.getInstance()
 
     fun setCallback(callback: RishtaCallback) {
@@ -67,32 +62,32 @@ class SwipeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        if(started)populateItems()
+        if(populationExists)populateItems() //This fragment is paused when user navigates to the UserInfo page, onResume, need to repopulate image or else it will be blank
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        if(!populationExists) {
+            val docRef = db.collection("users").document(userId)
+            docRef.get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
+                        Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                        preferredGender = document.getString(DATA_GENDER_PREFERENCE)
+                        preferredCountry = document.getString(DATA_COUNTRY_PREFERENCE)
+                        userName = document.getString(DATA_NAME)
+                        //imageUrl = document.getString(DATA_IMAGE_URL)
+                        cardsAdapter?.notifyDataSetChanged()
+                        populateItems()
 
-        val docRef = db.collection("users").document(userId)
-        docRef.get()
-            .addOnSuccessListener { document ->
-                if (document != null) {
-                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
-                    preferredGender = document.getString(DATA_GENDER_PREFERENCE)
-                    preferredCountry = document.getString(DATA_COUNTRY_PREFERENCE)
-                    userName = document.getString(DATA_NAME)
-                    imageUrl = document.getString(DATA_IMAGE_URL)
-                    cardsAdapter?.notifyDataSetChanged()
-                    populateItems()
-                    started = true
-                } else {
-                    Log.d(TAG, "No such document")
+                    } else {
+                        Log.d(TAG, "No such document")
+                    }
                 }
-            }
-            .addOnFailureListener { exception ->
-                Log.d(TAG, "get failed with ", exception)
-            }
-
+                .addOnFailureListener { exception ->
+                    Log.d(TAG, "get failed with ", exception)
+                }
+        }
 
 /*
         userDatabase.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
@@ -143,6 +138,7 @@ class SwipeFragment : Fragment() {
                             if (document.get(DATA_SWIPES_RIGHT).toString().contains(selectedUserId)) {
                                 Toast.makeText(context, "Match!", Toast.LENGTH_SHORT).show()
                                 callback!!.newMatch()
+                                callback!!.broadCastMessage(selectedUserId,"New Match!", "Go to the chats tab and say hi to your new match.")
                                 val chatKey = chatDatabase.push().key
                                 if (chatKey != null) {
                                     db.collection("users").document(userId)
@@ -153,6 +149,7 @@ class SwipeFragment : Fragment() {
                                     db.collection("users").document(selectedUserId)
                                         .update(DATA_SWIPES_RIGHT, FieldValue.arrayRemove(userId))
 
+                                    // Handle matching logic
                                     // DATA_MATCHES references chat data base, DATA_MATCHES_IDS used as history of previous matches during filtering in swipe fragment
                                     db.collection("users").document(userId)
                                         .update(DATA_MATCHES, FieldValue.arrayUnion(chatKey))
@@ -166,20 +163,26 @@ class SwipeFragment : Fragment() {
                                     db.collection("users").document(selectedUserId)
                                         .update(DATA_MATCH_IDS, FieldValue.arrayUnion(userId))
                                     //---
-
-                                    chatDatabase.child(chatKey).child(userId).child(DATA_NAME)
+                                    //--Setup chat database for matched users
+                                    chatDatabase.child(chatKey).child(userId)
+                                        .child(DATA_NAME)
                                         .setValue(userName)
                                     chatDatabase.child(chatKey).child(userId)
                                         .child(DATA_IMAGE_URL)
-                                        .setValue(imageUrl)
-
+                                        .setValue(document.get(DATA_IMAGE_URL))
                                     chatDatabase.child(chatKey).child(selectedUserId)
                                         .child(DATA_NAME)
                                         .setValue(selectedUser.name)
                                     chatDatabase.child(chatKey).child(selectedUserId)
                                         .child(DATA_IMAGE_URL)
                                         .setValue(selectedUser.imageUrl)
+                                    //---
                                 }
+                                //Handle notification
+
+
+                                //---
+
                             }
                         }
                         .addOnFailureListener { exception ->
@@ -280,7 +283,7 @@ class SwipeFragment : Fragment() {
             }
         */
 
-
+        populationExists = true
         noUsersLayout.visibility = View.GONE
         progressLayout.visibility = View.VISIBLE
         val docRef = db.collection("users")

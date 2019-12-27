@@ -18,7 +18,7 @@
             android:paddingBottom="16dp">
 
             <ImageView
-                android:id="@+id/photoIV"
+                android:id="@+id/profilePhotoIV"
                 android:layout_width="@dimen/standard_width"
                 android:layout_height="@dimen/standard_width"
                 android:paddingBottom="8dp"
@@ -28,7 +28,7 @@
                 android:id="@+id/nameTIL"
                 android:layout_width="@dimen/standard_width"
                 android:layout_height="wrap_content"
-                android:layout_below="@id/photoIV"
+                android:layout_below="@id/profilePhotoIV"
                 android:paddingBottom="8dp">
 
                 <com.google.android.material.textfield.TextInputEditText

@@ -9,24 +9,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Spinner
-import android.widget.TextView
 import android.widget.Toast
-import androidx.core.view.get
 import com.bumptech.glide.Glide
+import com.bumptech.glide.annotation.GlideModule
+import com.bumptech.glide.module.AppGlideModule
+
 
 import com.shotgunstudios.rishta_ahmadiyya.R
-import com.shotgunstudios.rishta_ahmadiyya.User
 import com.shotgunstudios.rishta_ahmadiyya.activities.RishtaCallback
 import com.shotgunstudios.rishta_ahmadiyya.util.*
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.android.synthetic.main.fragment_profile.*
-import kotlinx.android.synthetic.main.fragment_profile.view.*
-import java.util.*
+import kotlinx.android.synthetic.main.item.*
 
 
 class ProfileFragment : Fragment() {
@@ -55,7 +51,7 @@ class ProfileFragment : Fragment() {
         progressLayout.setOnTouchListener{view, event->true} //stop user from clicking before everything loads
         populateInfo()
 
-        photoIV.setOnClickListener { callback?.startActivityForPhoto() }
+        profilePhotoIV.setOnClickListener { callback?.startActivityForPhoto() }
 
         applyButton.setOnClickListener { onApply() }
         signoutButton.setOnClickListener { callback?.onSignout() }
@@ -257,7 +253,7 @@ class ProfileFragment : Fragment() {
     fun populateImage(uri: String) {
         Glide.with(this)
             .load(uri)
-            .into(photoIV)
+            .into(profilePhotoIV)
     }
 
 }

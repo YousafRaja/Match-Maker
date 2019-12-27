@@ -21,7 +21,7 @@ class CardsAdapter(context: Context?, resourceId: Int, users: List<User>): Array
         var finalView = convertView ?: LayoutInflater.from(context).inflate(R.layout.item, parent, false)
 
         var name = finalView.findViewById<TextView>(R.id.nameTV)
-        var image = finalView.findViewById<ImageView>(R.id.photoIV)
+        var image = finalView.findViewById<ImageView>(R.id.cardPhotoIV)
         var userInfo = finalView.findViewById<LinearLayout>(R.id.userInfoLayout)
 
         name.text = "${user.name}, ${user.age}"

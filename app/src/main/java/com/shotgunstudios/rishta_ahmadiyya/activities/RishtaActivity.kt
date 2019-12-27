@@ -1,6 +1,7 @@
 package com.shotgunstudios.rishta_ahmadiyya.activities
 
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -12,12 +13,12 @@ import android.os.Bundle
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.android.volley.RequestQueue
+import com.android.volley.toolbox.Volley
 import com.shotgunstudios.rishta_ahmadiyya.R
 import com.shotgunstudios.rishta_ahmadiyya.fragments.MatchesFragment
 import com.shotgunstudios.rishta_ahmadiyya.fragments.ProfileFragment
 import com.shotgunstudios.rishta_ahmadiyya.fragments.SwipeFragment
-import com.shotgunstudios.rishta_ahmadiyya.util.DATA_CHATS
-import com.shotgunstudios.rishta_ahmadiyya.util.DATA_USERS
 import com.google.android.material.tabs.TabLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
@@ -26,6 +27,17 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+
+import android.util.Log
+import android.widget.Toast
+import com.android.volley.Response
+import com.android.volley.toolbox.JsonObjectRequest
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
+import com.shotgunstudios.rishta_ahmadiyya.util.*
+import org.json.JSONException
+import org.json.JSONObject
+
 
 const val REQUEST_CODE_PHOTO = 1234
 class RishtaActivity : AppCompatActivity(), RishtaCallback {
@@ -49,17 +61,49 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
 
     private var resultImageUrl: Uri? = null
 
+    private var chattingWith = ""
 
+
+    private val FCM_API = "https://fcm.googleapis.com/fcm/send"
+    private val serverKey =
+        "key=" + "AAAAqwuM57Y:APA91bG7staJVmNioAxmATWnj6DnpMam5Wj0JuVZpuEYqa4XVkmv9cOloLoqx-gTf6tI4Lse865YIahgdYztPx3dj1NZ3B134sQLKnbR6wVZ3f-701BhUDDs6Ldi9EZHF67jTdO23qpG"
+    private val contentType = "application/json"
+
+
+
+    fun unsubAll(myID: String){
+        val db = FirebaseFirestore.getInstance()
+        val docRef = db.collection("users")
+        docRef.get()
+            .addOnSuccessListener { users ->
+                for (user in users){
+                    if(user.id==myID)continue
+                    FirebaseMessaging.getInstance().unsubscribeFromTopic("/topics/"+user.id)
+                }
+
+            }
+            .addOnFailureListener { exception ->
+                Log.d(ContentValues.TAG, "get failed with ", exception)
+            }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_main)
 
         if(userId.isNullOrEmpty()) {
                onSignout()
         }
 
-        userDatabase = FirebaseDatabase.getInstance().reference.child(DATA_USERS)
+        val topic = "/topics/"+userId.toString()
+        FirebaseMessaging.getInstance().subscribeToTopic("/topics/tJTKvoqqczP4VFBg8vBDc8kNtMO2")
+        FirebaseMessaging.getInstance().subscribeToTopic("/topics/OFa1tzxBQgMGjfBDqWCM1SlmUeM2")
+        unsubAll(userId.toString())
+        FirebaseMessaging.getInstance().subscribeToTopic(topic)
+
+        //requestQueue.add(ConnectivityUtils.broadCastMessage(userId.toString(), "title2", "abcd2", this))
+
         chatDatabase = FirebaseDatabase.getInstance().reference.child(DATA_CHATS)
 
 
@@ -176,6 +220,50 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
         }
     }
 
+    override fun broadCastMessage(uid : String, title: String, message: String){
+
+            val topic = "/topics/"+uid //topic has to match what the receiver subscribed to
+
+            val notification = JSONObject()
+            val notifcationBody = JSONObject()
+
+            try {
+                notifcationBody.put("title", title)
+                notifcationBody.put("message", message)
+                notification.put("to", topic)
+                notification.put("data", notifcationBody)
+                Log.e("TAG", "try")
+            } catch (e: JSONException) {
+                Log.e("TAG", "onCreate: " + e.message)
+            }
+
+            sendNotification(notification)
+
+    }
+
+    private fun sendNotification(notification: JSONObject) {
+        Log.e("TAG", "sendNotification")
+        val jsonObjectRequest = object : JsonObjectRequest(FCM_API, notification,
+            Response.Listener<JSONObject> { response ->
+                Log.i("TAG", "onResponse: $response")
+            },
+            Response.ErrorListener {
+                Toast.makeText(this@RishtaActivity, "Request error", Toast.LENGTH_LONG).show()
+                Log.i("TAG", "onErrorResponse: Didn't work")
+            }) {
+
+            override fun getHeaders(): Map<String, String> {
+                val params = HashMap<String, String>()
+                params["Authorization"] = serverKey
+                params["Content-Type"] = contentType
+                return params
+            }
+        }
+        requestQueue.add(jsonObjectRequest)
+    }
+
+
+
     fun storeImage() {
         if(resultImageUrl != null && userId != null) {
             val filePath = FirebaseStorage.getInstance().reference.child("profileImage").child(userId)
@@ -212,6 +300,10 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
         }
     }
 
+
+    private val requestQueue: RequestQueue by lazy {
+        Volley.newRequestQueue(this.applicationContext)
+    }
 
 
 
