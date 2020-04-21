@@ -15,17 +15,21 @@
     <string name="button_sign_out">Sign out</string>
     <string name="button_apply">Apply</string>
     <string name="error_profile_incomplete">Please complete your profile</string>
-    <string name="no_available_users">No available users</string>
+    <string name="no_available_users">No available users at the moment. Make sure your profile is complete and check back later.</string>
     <string name="send_button_text">Send</string>
     <string name="hint_message">Message</string>
 
     <string name="country_prompt">Choose a country</string>
     <string name="country_hint">Country</string>
-    <string name="hint_noMatch">When other users swipe right on your profile, you can chat with them here. Currently there are no notifications for this so you will have to check back periodically.</string>
-    <string name="bio_hint">Write an introduction for yourself.</string>
+    <string name="hint_noMatch">When other users swipe right on your profile, you can chat with them here.</string>
+    <string name="bio_hint">Write an introduction for yourself. Remember to tap Apply to save changes.</string>
     <string-array name="country_arrays">
         <item>Select Country</item>
         <item>Canada</item>
+        <item>Pakistan</item>
+        <item>UK</item>
+        <item>USA</item>
+        <item>Other</item>
     </string-array>
 
 

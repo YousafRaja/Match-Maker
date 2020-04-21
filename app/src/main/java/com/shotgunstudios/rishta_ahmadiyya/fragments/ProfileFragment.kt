@@ -2,6 +2,7 @@ package com.shotgunstudios.rishta_ahmadiyya.fragments
 
 
 import android.content.ContentValues.TAG
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
@@ -30,6 +31,7 @@ class ProfileFragment : Fragment() {
     private lateinit var userDatabase: DatabaseReference
     val db = FirebaseFirestore.getInstance()
     private var callback: RishtaCallback? = null
+    private var picSelected: Boolean = false
 
     fun setCallback(callback: RishtaCallback) {
         this.callback = callback
@@ -69,12 +71,15 @@ class ProfileFragment : Fragment() {
 
     fun populateInfo() {
         progressLayout.visibility = View.VISIBLE
+
         val docRef = db.collection("users").document(userId)
         docRef.get()
             .addOnSuccessListener { document ->
                 if (document != null) {
                     Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                    picSelected = document.getString(DATA_IMAGE_URL)!=""
                     nameET.setText(document.getString(DATA_NAME))
+                    bioET.setText(document.getString(DATA_BIO))
                     countrySP.setSelection(
                         getIndex(
                             countrySP,
@@ -94,7 +99,7 @@ class ProfileFragment : Fragment() {
                     } else {
                         radioWoman1.isChecked = true
                     }
-                    if(document.getString(DATA_IMAGE_URL)!="") {
+                    if(document.getString(DATA_IMAGE_URL)!=null) {
                         populateImage(document.getString(DATA_IMAGE_URL!!).toString())
                     }
 
@@ -186,7 +191,7 @@ class ProfileFragment : Fragment() {
 
         if (nameET.text.toString().isNullOrEmpty() ||
             countrySP.selectedItemPosition==0|| preferredCountrySP.selectedItemPosition==0||
-            radioGroup1.checkedRadioButtonId == -1
+            radioGroup1.checkedRadioButtonId == -1 || !picSelected
         ) {
             Toast.makeText(context, getString(R.string.error_profile_incomplete), Toast.LENGTH_SHORT).show()
         } else {
@@ -248,6 +253,7 @@ class ProfileFragment : Fragment() {
             .addOnSuccessListener { Log.d(TAG, "DocumentSnapshot successfully written!") }
             .addOnFailureListener { e -> Log.w(TAG, "Error writing document", e) }
         //userDatabase.child(DATA_IMAGE_URL).setValue(uri)
+        picSelected = true
         populateImage(uri)
     }
     fun populateImage(uri: String) {

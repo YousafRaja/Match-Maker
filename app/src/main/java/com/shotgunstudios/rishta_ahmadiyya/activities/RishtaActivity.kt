@@ -32,7 +32,10 @@ import android.util.Log
 import android.widget.Toast
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
+import com.google.firebase.database.ServerValue
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import com.shotgunstudios.rishta_ahmadiyya.util.*
 import org.json.JSONException
@@ -46,6 +49,7 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
 
     private val firebaseAuth = FirebaseAuth.getInstance()
     private val userId = firebaseAuth.currentUser?.uid
+    val db = FirebaseFirestore.getInstance()
 
     private lateinit var userDatabase: DatabaseReference
     private lateinit var chatDatabase: DatabaseReference
@@ -87,6 +91,33 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
             }
     }
 
+    fun updateAll(myID: String){
+        val db = FirebaseFirestore.getInstance()
+        val docRef = db.collection("users")
+        docRef.get()
+            .addOnSuccessListener { users ->
+                for (user in users){
+                    if(user.id==myID)continue
+                    updateTimeStamp(user.id)
+                }
+
+            }
+            .addOnFailureListener { exception ->
+                Log.d(ContentValues.TAG, "get failed with ", exception)
+            }
+    }
+
+  fun updateTimeStamp(user_id : String){
+      val docData = hashMapOf(
+          DATA_TS to FieldValue.serverTimestamp()
+      )
+
+      db.collection("users").document(user_id)
+          .set(docData, SetOptions.merge())
+          .addOnSuccessListener { Log.d(ContentValues.TAG, "Timestamp Updated") }
+          .addOnFailureListener { e -> Log.w(ContentValues.TAG, "Error writing document", e) }
+  }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -95,6 +126,8 @@ class RishtaActivity : AppCompatActivity(), RishtaCallback {
         if(userId.isNullOrEmpty()) {
                onSignout()
         }
+
+        updateTimeStamp(userId.toString())
 
         val topic = "/topics/"+userId.toString()
         FirebaseMessaging.getInstance().subscribeToTopic("/topics/tJTKvoqqczP4VFBg8vBDc8kNtMO2")

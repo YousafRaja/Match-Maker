@@ -55,13 +55,13 @@ class MatchesFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val test = matchesRV.size
-        val test2 = test
+
+
         matchesRV.apply {
             setHasFixedSize(false)
             layoutManager = LinearLayoutManager(context)
             adapter = chatsAdapter
-            if(chatsAdapter.itemCount!=0){
+            if (chatsAdapter.itemCount != 0) {
                 noMatchesLayout.visibility = View.GONE
             }
         }
@@ -69,30 +69,37 @@ class MatchesFragment : Fragment() {
 
     fun fetchData() {
 
-        val docRef = db.collection("users").document(userId)
 
+        val docRef = db.collection("users").document(userId)
         //for each chatID, in preferred gender search everyone for an array that contains the same chatID and fill in info for chatAdapter
         docRef.get()
             .addOnSuccessListener { document ->
-                var chatIDs = document.get(DATA_MATCHES) as ArrayList<String>
-                var genderPreference = document.getString(DATA_GENDER_PREFERENCE)
-                for (chatID in chatIDs){
-                    noMatchesLayout.visibility = View.GONE
-                    val docRef_match = db.collection("users")
-                        .whereEqualTo(DATA_GENDER, genderPreference)
-                        .whereArrayContains(DATA_MATCHES, chatID)
-                    docRef_match.get()
-                        .addOnSuccessListener { collection ->
-                            val user = collection.documents[0]
-                            val chat = Chat(userId, chatID, user.get(DATA_UID).toString(), user.get(
-                                DATA_NAME).toString(), user.get(DATA_IMAGE_URL).toString())
-                            chatsAdapter.addElement(chat)
-                        }
-                        .addOnFailureListener { exception ->
-                            Log.w(ContentValues.TAG, "Error getting documents: ", exception)
-                        }
+                var matches = document.get(DATA_MATCHES)
+
+                if (matches != null) {
+                    var chatIDs = matches as ArrayList<String>
+                    var genderPreference = document.getString(DATA_GENDER_PREFERENCE)
+                    for (chatID in chatIDs) {
+                        noMatchesLayout.visibility = View.GONE
+                        val docRef_match = db.collection("users")
+                            .whereEqualTo(DATA_GENDER, genderPreference)
+                            .whereArrayContains(DATA_MATCHES, chatID)
+                        docRef_match.get()
+                            .addOnSuccessListener { collection ->
+                                val user = collection.documents[0]
+                                val chat = Chat(
+                                    userId, chatID, user.get(DATA_UID).toString(), user.get(
+                                        DATA_NAME
+                                    ).toString(), user.get(DATA_IMAGE_URL).toString()
+                                )
+                                chatsAdapter.addElement(chat)
+                            }
+                            .addOnFailureListener { exception ->
+                                Log.w(ContentValues.TAG, "Error getting documents: ", exception)
+                            }
 
 
+                    }
                 }
 
             }

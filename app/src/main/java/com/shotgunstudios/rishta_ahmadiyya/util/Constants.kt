@@ -18,5 +18,9 @@ val DATA_MATCHES = "matches"
 val DATA_MATCH_IDS = "matchIDs"
 val DATA_BIO = "bio"
 
+val DATA_HIDE = "hide"
+
 val DATA_CHATS = "Chats"
 val DATA_MESSAGES = "Messages"
+val DATA_TS = "timestamp"
+

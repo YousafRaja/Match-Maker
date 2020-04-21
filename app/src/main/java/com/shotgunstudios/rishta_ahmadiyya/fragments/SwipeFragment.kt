@@ -19,6 +19,7 @@ import com.shotgunstudios.rishta_ahmadiyya.util.*
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.lorentzos.flingswipe.SwipeFlingAdapterView
 import kotlinx.android.synthetic.main.fragment_swipe.*
 import kotlinx.android.synthetic.main.fragment_swipe.progressLayout
@@ -263,33 +264,13 @@ class SwipeFragment : Fragment() {
 
     fun populateItems() {
 
-        /*
-        val docRef2 = db.collection("users").document(userId)
-        docRef2.get()
-            .addOnSuccessListener { document ->
-                if (document != null) {
-                    Log.d(TAG, "DocumentSnapshot data: ${document.data}")
-                    preferredGender = document.getString(DATA_GENDER_PREFERENCE)
-                    preferredCountry = document.getString(DATA_COUNTRY_PREFERENCE)
-                    userName = document.getString(DATA_NAME)
-                    imageUrl = document.getString(DATA_IMAGE_URL)
-                    populateItems()
-                } else {
-                    Log.d(TAG, "No such document")
-                }
-            }
-            .addOnFailureListener { exception ->
-                Log.d(TAG, "get failed with ", exception)
-            }
-        */
-
         populationExists = true
         noUsersLayout.visibility = View.GONE
         progressLayout.visibility = View.VISIBLE
         val docRef = db.collection("users")
             .whereEqualTo(DATA_GENDER, preferredGender)
+            .orderBy(DATA_TS, Query.Direction.DESCENDING)
 
-        //.whereEqualTo(DATA_COUNTRY, DATA_COUNTRY_PREFERENCE)
         docRef.get()
             .addOnSuccessListener { filteredUsers ->
                 for (document in filteredUsers) {
@@ -298,6 +279,8 @@ class SwipeFragment : Fragment() {
                     if (document.get(DATA_SWIPES_LEFT).toString().contains(userId)
                         || document.get(DATA_SWIPES_RIGHT).toString().contains(userId)
                         || document.get(DATA_MATCH_IDS).toString().contains(userId)
+                        || document.get(DATA_UID) == userId
+                        || document.get(DATA_HIDE).toString().contains("true")
                     ) {
                         showUser = false
                     }
